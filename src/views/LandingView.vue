@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { onMounted, ref, watch, type ShallowRef } from 'vue'
-import { TresCanvas, type TresInstance } from '@tresjs/core'
+import { onMounted, ref, watch } from 'vue'
+import { TresCanvas } from '@tresjs/core'
 import { BasicShadowMap, SRGBColorSpace, NoToneMapping } from 'three'
 
 import ChristmasTree from '../components/ChristmasTree.vue'
@@ -9,7 +9,7 @@ import type { HandLandmarkerResult } from '@mediapipe/tasks-vision'
 import { getDistance } from '@/Utils'
 
 const videoElement = ref<HTMLVideoElement | null>(null)
-const christmasTreeRef: ShallowRef<TresInstance | null> = ref(null)
+const christmasTreeRef = ref<InstanceType<typeof ChristmasTree> | null>(null)
 const cameras = ref<MediaDeviceInfo[]>([])
 const selectedCameraId = ref<string | null>(null)
 let gestureRecognizer: GestureRecognizer | null = null
@@ -46,10 +46,23 @@ function syncObjectLocation() {
       center_y = ((landmark0.y + landmark5.y + landmark17.y) / 3) * videoHeight
 
       debugMsg.value = `${getDistance(landmark0, landmark5)} \n ${getDistance(landmark17, landmark5)}\n${getDistance(landmark0, landmark17)}mm`
+      // 调整模型位置
+      if (christmasTreeRef.value?.boxRef) {
+        const boxRef = christmasTreeRef.value.boxRef
+        if (boxRef) {
+          boxRef.position.x = (center_x - videoWidth / 2) / 20
+          boxRef.position.z = (center_y - videoHeight / 2) / 20
+        }
+      }
 
-      if (christmasTreeRef.value) {
-        christmasTreeRef.value.boxRef.position.x = (center_x - videoWidth / 2) / 20
-        christmasTreeRef.value.boxRef.position.z = (center_y - videoHeight / 2) / 20
+      // 调整模型缩放
+      const avgDistance =
+        (getDistance(landmark0, landmark5) +
+          getDistance(landmark17, landmark5) +
+          getDistance(landmark0, landmark17)) /
+        3
+      if (christmasTreeRef.value?.setScale) {
+        christmasTreeRef.value.setScale(avgDistance / 0.2, avgDistance / 0.2, avgDistance / 0.2)
       }
     }
   }
@@ -95,13 +108,13 @@ const gl = {
 }
 
 function reset() {
-  if (christmasTreeRef.value) {
-    christmasTreeRef.value.boxRef.rotation.x = 0
-    christmasTreeRef.value.boxRef.rotation.y = 0
-    christmasTreeRef.value.boxRef.rotation.z = 0
-    christmasTreeRef.value.boxRef.position.y = 0
-    christmasTreeRef.value.boxRef.position.x = 0
-    christmasTreeRef.value.boxRef.position.z = 0
+  if (christmasTreeRef.value?.boxRef?.boxRef) {
+    christmasTreeRef.value.boxRef.boxRef.rotation.x = 0
+    christmasTreeRef.value.boxRef.boxRef.rotation.y = 0
+    christmasTreeRef.value.boxRef.boxRef.rotation.z = 0
+    christmasTreeRef.value.boxRef.boxRef.position.y = 0
+    christmasTreeRef.value.boxRef.boxRef.position.x = 0
+    christmasTreeRef.value.boxRef.boxRef.position.z = 0
   }
 }
 
@@ -196,29 +209,40 @@ watch(selectedCameraId, async (newId) => {
       <p>{{ msg }}</p>
       <p>{{ debugMsg }}</p>
     </div>
-    <div class="toolbarItem"></div>
   </div>
 </template>
 
 <style scoped>
 .cavBar {
   width: 100vw;
-  height: 90vh;
+  height: 92vh;
 }
 .cam {
   width: 100vw;
-  height: 90vh;
+  height: 92vh;
 }
 
 .toolbar {
   width: 100vw;
   display: flex;
+  background-color: #f2f2f2;
 }
 
 .toolbarItem {
   padding-left: 10px;
-  height: 10vh;
-  background-color: #f2f2f2;
+  height: 8vh;
+}
+select {
+  margin: 10px;
+  width: 200px;
+  height: 40px;
+  font-size: large;
+  padding: 5px 10px;
+  border-radius: 5px;
+  background-color: #f78b3d;
+  color: #fff;
+  border: none;
+  cursor: pointer;
 }
 button {
   margin: 10px;

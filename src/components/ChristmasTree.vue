@@ -2,10 +2,15 @@
 import { useLoader, useRenderLoop, type TresInstance } from '@tresjs/core'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader'
 import { shallowRef, type ShallowRef } from 'vue'
-
 const boxRef: ShallowRef<TresInstance | null> = shallowRef(null)
+
+const setScale = (x: number, y: number, z: number) => {
+  if (scene) {
+    scene.scale.set(x, y, z)
+  }
+}
 // 暴露 boxRef
-defineExpose({ boxRef })
+defineExpose({ boxRef, setScale })
 
 // const { scene } = await useLoader(GLTFLoader, 'src/assets/earphone.gltf')
 // scene.scale.set(30, 30, 30)
