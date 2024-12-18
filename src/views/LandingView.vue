@@ -214,7 +214,9 @@ watch(selectedCameraId, async (newId) => {
       </option>
     </select>
     <div class="toolbarItem">
-      <p>{{ gestureRecognizerLoaded ? '模型加载成功' : '模型加载中' }}</p>
+      <p :style="{ color: gestureRecognizerLoaded ? 'black' : 'red' }">
+        {{ gestureRecognizerLoaded ? '模型加载成功' : '模型加载中' }}
+      </p>
     </div>
     <div class="toolbarItem">
       <p>{{ msg }}</p>
