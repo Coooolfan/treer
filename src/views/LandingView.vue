@@ -4,16 +4,19 @@ import { TresCanvas, type TresInstance } from '@tresjs/core'
 import { BasicShadowMap, SRGBColorSpace, NoToneMapping } from 'three'
 
 import ChristmasTree from '../components/ChristmasTree.vue'
-import { FilesetResolver, HandLandmarker } from '@mediapipe/tasks-vision'
+import { FilesetResolver, GestureRecognizer } from '@mediapipe/tasks-vision'
 import type { HandLandmarkerResult } from '@mediapipe/tasks-vision'
+import { getDistance } from '@/Utils'
 
 const videoElement = ref<HTMLVideoElement | null>(null)
 const christmasTreeRef: ShallowRef<TresInstance | null> = ref(null)
 const cameras = ref<MediaDeviceInfo[]>([])
 const selectedCameraId = ref<string | null>(null)
-let handLandmarker: HandLandmarker | null = null
+let gestureRecognizer: GestureRecognizer | null = null
+const gestureRecognizerLoaded = ref(false)
 let handLandmarkerResult: HandLandmarkerResult | null = null
 const msg = ref('')
+const debugMsg = ref('')
 
 async function getCameraDevices(): Promise<MediaDeviceInfo[]> {
   const devices = await navigator.mediaDevices.enumerateDevices()
@@ -25,31 +28,24 @@ function syncObjectLocation() {
     const videoWidth = videoElement.value.videoWidth
     const videoHeight = videoElement.value.videoHeight
 
-    // const videoAspectRatio = videoWidth / videoHeight
-
-    // const offsetX = (canvasWidth - drawWidth) / 2
-    // const offsetY = (canvasHeight - drawHeight) / 2
-    const offsetX = 0
-    const offsetY = 0
-
     let center_x = 0
     let center_y = 0
     // 绘制手部检测结果
     if (handLandmarkerResult) {
       if (handLandmarkerResult.handedness.length === 0) {
         msg.value = '未检测到手'
-        requestAnimationFrame(syncObjectLocation)
+        window.requestAnimationFrame(syncObjectLocation)
         return
       }
-      for (let i = 0; i < handLandmarkerResult.landmarks[0].length; i++) {
-        if (!(i === 0 || i === 5 || i === 17)) continue
-        const landmark = handLandmarkerResult.landmarks[0][i]
-        center_x += landmark.x
-        center_y += landmark.y
-      }
+      const [landmark0, landmark5, landmark17] = [
+        handLandmarkerResult.landmarks[0][0],
+        handLandmarkerResult.landmarks[0][5],
+        handLandmarkerResult.landmarks[0][17],
+      ]
+      center_x = ((landmark0.x + landmark5.x + landmark17.x) / 3) * videoWidth
+      center_y = ((landmark0.y + landmark5.y + landmark17.y) / 3) * videoHeight
 
-      center_x = (center_x / 3) * videoWidth + offsetX
-      center_y = (center_y / 3) * videoHeight + offsetY
+      debugMsg.value = `${getDistance(landmark0, landmark5)} \n ${getDistance(landmark17, landmark5)}\n${getDistance(landmark0, landmark17)}mm`
 
       if (christmasTreeRef.value) {
         christmasTreeRef.value.boxRef.position.x = (center_x - videoWidth / 2) / 20
@@ -57,20 +53,24 @@ function syncObjectLocation() {
       }
     }
   }
-  requestAnimationFrame(syncObjectLocation)
+  window.requestAnimationFrame(syncObjectLocation)
 }
-
-onMounted(async () => {
+async function createGestureRecognizer() {
+  gestureRecognizerLoaded.value = false
   const vision = await FilesetResolver.forVisionTasks(
-    'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/wasm',
+    'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm',
   )
-
-  handLandmarker = await HandLandmarker.createFromOptions(vision, {
+  gestureRecognizer = await GestureRecognizer.createFromOptions(vision, {
     baseOptions: {
-      modelAssetPath: 'src/assets/hand_landmarker.task',
+      modelAssetPath:
+        'https://storage.googleapis.com/mediapipe-models/gesture_recognizer/gesture_recognizer/float16/1/gesture_recognizer.task',
     },
-    numHands: 2,
+    runningMode: 'VIDEO',
   })
+  gestureRecognizerLoaded.value = true
+}
+onMounted(async () => {
+  createGestureRecognizer()
   try {
     // 请求摄像头权限
     const stream = await navigator.mediaDevices.getUserMedia({ video: true })
@@ -83,7 +83,7 @@ onMounted(async () => {
   } catch (error) {
     console.error('无法访问摄像头：', error)
   }
-  requestAnimationFrame(syncObjectLocation)
+  window.requestAnimationFrame(syncObjectLocation)
 })
 
 const gl = {
@@ -105,47 +105,22 @@ function reset() {
   }
 }
 
-async function captureImageFromSelectedCamera(deviceId: string): Promise<ImageBitmap> {
-  // 请求特定摄像头权限
-  const stream = await navigator.mediaDevices.getUserMedia({
-    video: { deviceId: { exact: deviceId } },
-  })
-
-  // 创建一个视频元素
-  const video = document.createElement('video')
-  video.srcObject = stream
-  video.play()
-
-  // 等待视频元素加载元数据
-  await new Promise<void>((resolve) => {
-    video.onloadedmetadata = () => resolve()
-  })
-
-  // 创建一个画布元素
-  const canvas = document.createElement('canvas')
-  canvas.width = video.videoWidth
-  canvas.height = video.videoHeight
-
-  // 将视频帧绘制到画布上
-  const context = canvas.getContext('2d')
-  if (context) {
-    context.drawImage(video, 0, 0, canvas.width, canvas.height)
-  }
-
-  // 停止视频流
-  stream.getTracks().forEach((track) => track.stop())
-
-  // 从画布创建 ImageBitmap
-  const imageBitmap = await createImageBitmap(canvas)
-
-  return imageBitmap
-}
-
 async function detect() {
-  const image = await captureImageFromSelectedCamera(selectedCameraId.value?.toString() || '')
   // 开始时间
   const start = performance.now()
-  if (handLandmarker) handLandmarkerResult = handLandmarker.detect(image)
+  if (gestureRecognizerLoaded.value && videoElement.value) {
+    // 等待视频元数据加载完成
+    if (videoElement.value.readyState < 2) {
+      await new Promise<void>((resolve) => {
+        videoElement.value!.onloadeddata = () => resolve()
+      })
+    }
+    try {
+      handLandmarkerResult = gestureRecognizer!.recognizeForVideo(videoElement.value, Date.now())
+    } catch (error) {
+      console.error('检测失败：', error)
+    }
+  }
 
   // 结束时间
   const end = performance.now()
@@ -153,7 +128,7 @@ async function detect() {
   msg.value = handLandmarkerResult
     ? `检测耗时：${end - start}ms, 一共有${handLandmarkerResult.handedness.length}只手`
     : '检测失败，未检测到手'
-  detect()
+  window.requestAnimationFrame(detect)
 }
 
 // 启动摄像头流
@@ -206,7 +181,7 @@ watch(selectedCameraId, async (newId) => {
       <button @click="reset">重置</button>
     </div>
     <div class="toolbarItem">
-      <button @click="detect">检测</button>
+      <button @click="detect">开始</button>
     </div>
 
     <select v-model="selectedCameraId">
@@ -215,9 +190,13 @@ watch(selectedCameraId, async (newId) => {
       </option>
     </select>
     <div class="toolbarItem">
-      <!-- <button @click="startCameraStream">展示</button> -->
+      <p>{{ gestureRecognizerLoaded ? '模型加载成功' : '模型加载中' }}</p>
     </div>
-    <span>{{ msg }}</span>
+    <div class="toolbarItem">
+      <p>{{ msg }}</p>
+      <p>{{ debugMsg }}</p>
+    </div>
+    <div class="toolbarItem"></div>
   </div>
 </template>
 
@@ -237,6 +216,7 @@ watch(selectedCameraId, async (newId) => {
 }
 
 .toolbarItem {
+  padding-left: 10px;
   height: 10vh;
   background-color: #f2f2f2;
 }
