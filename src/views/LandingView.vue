@@ -19,7 +19,7 @@ const msg = ref('')
 // const debugMsg = ref('')
 
 async function getCameraDevices(): Promise<MediaDeviceInfo[]> {
-  const devices = await navigator.mediaDevices.enumerateDevices()
+  const devices = await window.navigator.mediaDevices.enumerateDevices()
   return devices.filter((device) => device.kind === 'videoinput')
 }
 
@@ -87,7 +87,7 @@ onMounted(async () => {
     window.alert('Treer 即将向您请求摄像头权限\n摄像头数据完全在本地处理, 不会有任何信息被上传')
     checkOrientation()
     window.addEventListener('orientationchange', checkOrientation)
-    const stream = await navigator.mediaDevices.getUserMedia({ video: true })
+    const stream = await window.navigator.mediaDevices.getUserMedia({ video: true })
     if (videoElement.value) {
       videoElement.value.srcObject = stream
       await videoElement.value.play()
@@ -165,7 +165,7 @@ async function startCameraStream(deviceId: string) {
     }
 
     // 请求新的摄像头流
-    const stream = await navigator.mediaDevices.getUserMedia({
+    const stream = await window.navigator.mediaDevices.getUserMedia({
       video: { deviceId: { exact: deviceId } },
     })
 
