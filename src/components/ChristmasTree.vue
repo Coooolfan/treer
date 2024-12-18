@@ -21,7 +21,7 @@ const { onLoop } = useRenderLoop()
 onLoop(({ delta }) => {
   if (boxRef.value) {
     boxRef.value.rotation.y += delta / 1.1
-    boxRef.value.rotation.x = -Math.PI / 2.5
+    boxRef.value.rotation.x = -Math.PI / 2
     // boxRef.value.rotation.z = elapsed * 0.2
     // boxRef.value.position.y += delta
   }

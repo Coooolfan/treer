@@ -16,7 +16,7 @@ let gestureRecognizer: GestureRecognizer | null = null
 const gestureRecognizerLoaded = ref(false)
 let handLandmarkerResult: HandLandmarkerResult | null = null
 const msg = ref('')
-const debugMsg = ref('')
+// const debugMsg = ref('')
 
 async function getCameraDevices(): Promise<MediaDeviceInfo[]> {
   const devices = await navigator.mediaDevices.enumerateDevices()
@@ -45,7 +45,7 @@ function syncObjectLocation() {
       center_x = ((landmark0.x + landmark5.x + landmark17.x) / 3) * videoWidth
       center_y = ((landmark0.y + landmark5.y + landmark17.y) / 3) * videoHeight
 
-      debugMsg.value = `${getDistance(landmark0, landmark5)} \n ${getDistance(landmark17, landmark5)}\n${getDistance(landmark0, landmark17)}mm`
+      // debugMsg.value = `${getDistance(landmark0, landmark5)} \n ${getDistance(landmark17, landmark5)}\n${getDistance(landmark0, landmark17)}mm`
       // 调整模型位置
       if (christmasTreeRef.value?.boxRef) {
         const boxRef = christmasTreeRef.value.boxRef
@@ -70,13 +70,10 @@ function syncObjectLocation() {
 }
 async function createGestureRecognizer() {
   gestureRecognizerLoaded.value = false
-  const vision = await FilesetResolver.forVisionTasks(
-    'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm',
-  )
+  const vision = await FilesetResolver.forVisionTasks(import.meta.env.BASE_URL + '/wasm')
   gestureRecognizer = await GestureRecognizer.createFromOptions(vision, {
     baseOptions: {
-      modelAssetPath:
-        'https://storage.googleapis.com/mediapipe-models/gesture_recognizer/gesture_recognizer/float16/1/gesture_recognizer.task',
+      modelAssetPath: new URL('../assets/gesture_recognizer.task', import.meta.url).href,
     },
     runningMode: 'VIDEO',
   })
@@ -86,6 +83,10 @@ onMounted(async () => {
   createGestureRecognizer()
   try {
     // 请求摄像头权限
+    // 提示用户允许摄像头权限
+    window.alert('Treer 即将向您请求摄像头权限\n摄像头数据完全在本地处理, 不会有任何信息被上传')
+    checkOrientation()
+    window.addEventListener('orientationchange', checkOrientation)
     const stream = await navigator.mediaDevices.getUserMedia({ video: true })
     if (videoElement.value) {
       videoElement.value.srcObject = stream
@@ -137,11 +138,21 @@ async function detect() {
 
   // 结束时间
   const end = performance.now()
-  console.log(handLandmarkerResult, end - start + 'ms')
+  // console.log(handLandmarkerResult, end - start + 'ms')
   msg.value = handLandmarkerResult
-    ? `检测耗时：${end - start}ms, 一共有${handLandmarkerResult.handedness.length}只手`
+    ? `检测耗时：${(end - start).toFixed(0)}ms, 一共有${handLandmarkerResult.handedness.length}只手`
     : '检测失败，未检测到手'
   window.requestAnimationFrame(detect)
+}
+const isPortrait = ref(false)
+
+function checkOrientation() {
+  if (window.matchMedia('(orientation: portrait)').matches) {
+    isPortrait.value = true
+    alert('为了获得更好的体验，请使用横屏模式浏览。(微信不支持横屏模式, 建议使用系统浏览器打开)')
+  } else {
+    isPortrait.value = false
+  }
 }
 
 // 启动摄像头流
@@ -207,7 +218,7 @@ watch(selectedCameraId, async (newId) => {
     </div>
     <div class="toolbarItem">
       <p>{{ msg }}</p>
-      <p>{{ debugMsg }}</p>
+      <!-- <p>{{ debugMsg }}</p> -->
     </div>
   </div>
 </template>
@@ -215,11 +226,11 @@ watch(selectedCameraId, async (newId) => {
 <style scoped>
 .cavBar {
   width: 100vw;
-  height: 92vh;
+  height: 100vh;
 }
 .cam {
   width: 100vw;
-  height: 92vh;
+  height: 100vh;
 }
 
 .toolbar {

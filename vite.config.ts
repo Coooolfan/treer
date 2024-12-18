@@ -16,5 +16,5 @@ export default defineConfig({
     host: true,
   },
   // 添加静态资源处理配置
-  assetsInclude: ['**/*.gltf', '**/*.glb'], // 添加对 gltf/glb 文件的支持
+  assetsInclude: ['**/*.gltf', '**/*.glb', '**/*.task', '**/*.wasm'], // 添加对 gltf/glb 文件的支持
 })
