@@ -244,8 +244,7 @@ watch(selectedCameraId, async (newId) => {
     </p>
     <p class="msgItem2">{{ msg }}</p>
     <p class="copyright">
-      此页面为项目 Treer 的演示站。项目地址：
-      <a href="https://github.com/Coooolfan/treer">https://github.com/Coooolfan/treer</a>
+      <a href="https://github.com/Coooolfan/treer">此页面为项目 Treer 的演示站。</a>
       &nbsp;定制联系邮箱：coolfan1024@gmail.com
     </p>
   </div>
@@ -289,7 +288,7 @@ watch(selectedCameraId, async (newId) => {
 .copyright {
   margin: 0;
   position: absolute;
-  top: 60px;
+  top: 120px;
   left: 0;
   width: 100%;
   height: 60px;
