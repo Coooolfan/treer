@@ -218,7 +218,15 @@ watch(selectedCameraId, async (newId) => {
 })
 </script>
 <template>
-  <TresCanvas v-bind="gl" style="pointer-events: none; position: absolute" class="tres_cav">
+  <div class="toolbar">
+    <button class="toolbarItem" @click="detect">开始</button>
+    <select v-model="selectedCameraId">
+      <option v-for="camera in cameras" :key="camera.deviceId" :value="camera.deviceId">
+        {{ camera.label }}
+      </option>
+    </select>
+  </div>
+  <TresCanvas v-bind="gl" style="pointer-events: none; position: absolute; top: 60px">
     <!-- 摄像头 -->
     <TresPerspectiveCamera :position="[0, 25, 0]" :look-at="[0, 0, 0]" />
     <!-- 控制器 -->
@@ -229,44 +237,21 @@ watch(selectedCameraId, async (newId) => {
     </Suspense>
     <TresDirectionalLight cast-shadow :position="[0, 2, 0]" :intensity="10" />
   </TresCanvas>
-  <div class="video_cav">
-    <video class="cam" ref="videoElement"></video>
-    <!-- <canvas class="cam" ref="canvasElement" id="output"></canvas> -->
-  </div>
-
-  <div class="toolbar">
-    <div class="toolbarItem">
-      <button @click="getCameraDevices">刷新摄像头列表</button>
-    </div>
-    <div class="toolbarItem">
-      <button @click="detect">开始</button>
-    </div>
-
-    <select v-model="selectedCameraId">
-      <option v-for="camera in cameras" :key="camera.deviceId" :value="camera.deviceId">
-        {{ camera.label }}
-      </option>
-    </select>
-    <div class="toolbarItem">
-      <p :style="{ color: gestureRecognizerLoaded ? 'black' : 'red' }">
-        {{ gestureRecognizerLoaded ? '模型加载成功' : '模型加载中' }}
-      </p>
-    </div>
-    <div class="toolbarItem">
-      <p>{{ msg }}</p>
-      <!-- <p>{{ debugMsg }}</p> -->
-    </div>
+  <video class="video_cav" ref="videoElement"></video>
+  <div class="msgBox">
+    <p class="msgItem1" :style="{ color: gestureRecognizerLoaded ? 'black' : 'red' }">
+      {{ gestureRecognizerLoaded ? '模型加载成功' : '模型加载中' }}
+    </p>
+    <p class="msgItem2">{{ msg }}</p>
+    <p class="copyright">
+      此页面为项目 Treer 的演示站。项目地址：
+      <a href="https://github.com/Coooolfan/treer">https://github.com/Coooolfan/treer</a>
+      &nbsp;定制联系邮箱：coolfan1024@gmail.com
+    </p>
   </div>
 </template>
 
 <style scoped>
-.tres_cav {
-  top: 0;
-  left: 0;
-  z-index: 1000; /* 确保在其他元素之上 */
-  width: 100vw;
-  height: 100vh;
-}
 .video_cav {
   width: 100vw;
   height: 100vh;
@@ -278,20 +263,45 @@ watch(selectedCameraId, async (newId) => {
 
 .toolbar {
   width: 100vw;
+  height: 60px;
   display: flex;
   background-color: #f2f2f2;
   justify-content: space-around;
   flex-wrap: wrap;
+  align-items: center;
 }
-
-.toolbarItem {
-  padding-left: 10px;
-  height: 8vh;
+.msgItem1 {
+  margin-left: 8px;
+  position: absolute;
+  top: 60px;
+  left: 0;
+  width: auto;
+  height: 60px;
+}
+.msgItem2 {
+  margin-right: 8px;
+  position: absolute;
+  top: 60px;
+  right: 0;
+  width: auto;
+  height: 60px;
+}
+.copyright {
+  margin: 0;
+  position: absolute;
+  top: 60px;
+  left: 0;
+  width: 100%;
+  height: 60px;
+  background-color: rgba(242, 242, 242, 0.244);
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 select {
-  margin: 10px;
-  width: 200px;
   height: 40px;
+  width: 200px;
   font-size: large;
   padding: 5px 10px;
   border-radius: 5px;
@@ -301,11 +311,9 @@ select {
   cursor: pointer;
 }
 button {
-  margin: 10px;
-  width: auto;
+  width: 5rem;
   height: 40px;
   font-size: large;
-  padding: 5px 10px;
   border-radius: 5px;
   background-color: #f78b3d;
   color: #fff;
