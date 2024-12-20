@@ -98,7 +98,7 @@ onMounted(async () => {
   try {
     // 请求摄像头权限
     // 提示用户允许摄像头权限
-    // window.alert('Treer 即将向您请求摄像头权限\n摄像头数据完全在本地处理, 不会有任何信息被上传')
+    window.alert('Treer 即将向您请求摄像头权限\n摄像头数据完全在本地处理, 不会有任何信息被上传')
     // 检查横竖屏
     checkOrientation()
     window.addEventListener('orientationchange', checkOrientation)
