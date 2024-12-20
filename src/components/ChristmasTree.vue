@@ -12,7 +12,6 @@ const setScale = (x: number, y: number, z: number) => {
 // 暴露 boxRef
 defineExpose({ boxRef, setScale })
 
-// const { scene } = await useLoader(GLTFLoader, 'src/assets/earphone.gltf')
 // scene.scale.set(30, 30, 30)
 
 const { scene } = await useGLTF(new URL('../assets/christmas_tree.gltf', import.meta.url).href)

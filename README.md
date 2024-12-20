@@ -1,39 +1,54 @@
-# treer
+# Treer
 
-This template should help get you started developing with Vue 3 in Vite.
+不只是在圣诞节种树
 
-## Recommended IDE Setup
+mediapipe + Three.js + Vue
 
-[VSCode](https://code.visualstudio.com/) + [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur).
+> [!NOTE]
+> 我并不深入了解 Three.js 和 mediapipe，所以这个项目的设计可能有很多问题，如果你有任何建议，欢迎提 Issue 或者 PR。
+> It just WORKS!
 
-## Type Support for `.vue` Imports in TS
+# 截图
 
-TypeScript cannot handle type information for `.vue` imports by default, so we replace the `tsc` CLI with `vue-tsc` for type checking. In editors, we need [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) to make the TypeScript language service aware of `.vue` types.
+![alt text](/image/screenshot.jpg)
 
-## Customize configuration
+# 特色
 
-See [Vite Configuration Reference](https://vite.dev/config/).
+- 自动追踪手部
+- 本地处理，纯前端
+- 切换摄像头
+- 横竖屏适配
+- 无外部依赖（打包后的项目不依赖第三方）
 
-## Project Setup
+# 编译与部署
 
-```sh
-pnpm install
-```
+1. 下载项目
 
-### Compile and Hot-Reload for Development
+    ```bash
+    git clone https://github.com/Coooolfan/treer.git
+    cd treer
+    ```
 
-```sh
-pnpm dev
-```
+2. 安装依赖
 
-### Type-Check, Compile and Minify for Production
+    ```bash
+    yarn
+    ```
 
-```sh
-pnpm build
-```
+3. 启动测试服务器
 
-### Lint with [ESLint](https://eslint.org/)
+    ```bash
+    yarn dev
+    ```
 
-```sh
-pnpm lint
-```
+4. 打包
+
+    ```bash
+    yarn build
+    ```
+
+# 二次开发与分发
+
+- 如果只需要修改模型，只需要替换`src\assets\christmas_tree.gltf`为你的模型即可。然后可以视情况修改`src\components\ChristmasTree.vue`中的第15行的`scale`即可。
+
+- GPL-3.0 License
