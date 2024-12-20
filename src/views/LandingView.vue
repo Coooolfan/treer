@@ -85,8 +85,10 @@ onMounted(async () => {
     // 请求摄像头权限
     // 提示用户允许摄像头权限
     window.alert('Treer 即将向您请求摄像头权限\n摄像头数据完全在本地处理, 不会有任何信息被上传')
+    // 检查横竖屏
     checkOrientation()
     window.addEventListener('orientationchange', checkOrientation)
+    // 尝试初始化摄像头
     const stream = await window.navigator.mediaDevices.getUserMedia({ video: true })
     if (videoElement.value) {
       videoElement.value.srcObject = stream
@@ -95,7 +97,19 @@ onMounted(async () => {
       selectedCameraId.value = cameras.value[0].deviceId
     }
   } catch (error) {
-    console.error('无法访问摄像头：', error)
+    if (
+      error instanceof DOMException &&
+      error.message.includes('play() can only be initiated by a user gesture')
+    ) {
+      const stream = await window.navigator.mediaDevices.getUserMedia({ video: true })
+      if (videoElement.value) {
+        videoElement.value.srcObject = stream
+        cameras.value = await getCameraDevices()
+        selectedCameraId.value = cameras.value[0].deviceId
+      }
+    } else {
+      console.error('播放视频时发生错误：', error)
+    }
   }
   window.requestAnimationFrame(syncObjectLocation)
 })
@@ -108,18 +122,14 @@ const gl = {
   toneMapping: NoToneMapping,
 }
 
-function reset() {
-  if (christmasTreeRef.value?.boxRef?.boxRef) {
-    christmasTreeRef.value.boxRef.boxRef.rotation.x = 0
-    christmasTreeRef.value.boxRef.boxRef.rotation.y = 0
-    christmasTreeRef.value.boxRef.boxRef.rotation.z = 0
-    christmasTreeRef.value.boxRef.boxRef.position.y = 0
-    christmasTreeRef.value.boxRef.boxRef.position.x = 0
-    christmasTreeRef.value.boxRef.boxRef.position.z = 0
-  }
-}
-
 async function detect() {
+  if (videoElement.value && videoElement.value.paused) {
+    try {
+      await videoElement.value.play()
+    } catch (error) {
+      console.error('播放视频时发生错误：', error)
+    }
+  }
   // 开始时间
   const start = performance.now()
   if (gestureRecognizerLoaded.value && videoElement.value) {
@@ -202,7 +212,7 @@ watch(selectedCameraId, async (newId) => {
 
   <div class="toolbar">
     <div class="toolbarItem">
-      <button @click="reset">重置</button>
+      <button @click="getCameraDevices">刷新摄像头列表</button>
     </div>
     <div class="toolbarItem">
       <button @click="detect">开始</button>
