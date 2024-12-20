@@ -12,6 +12,7 @@ const videoElement = ref<HTMLVideoElement | null>(null)
 const christmasTreeRef = ref<InstanceType<typeof ChristmasTree> | null>(null)
 const cameras = ref<MediaDeviceInfo[]>([])
 const selectedCameraId = ref<string | null>(null)
+const orientation = ref<'portrait' | 'landscape' | 'unknown'>('portrait') // 默认为竖屏
 let gestureRecognizer: GestureRecognizer | null = null
 const gestureRecognizerLoaded = ref(false)
 let handLandmarkerResult: HandLandmarkerResult | null = null
@@ -46,12 +47,21 @@ function syncObjectLocation() {
       center_y = ((landmark0.y + landmark5.y + landmark17.y) / 3) * videoHeight
 
       // debugMsg.value = `${getDistance(landmark0, landmark5)} \n ${getDistance(landmark17, landmark5)}\n${getDistance(landmark0, landmark17)}mm`
+
+      // 调整模型位置和缩放比例，默认为竖屏
+      let positionScale = 60
+      let senceScale = 0.5
+      if (orientation.value === 'landscape') {
+        positionScale = 20
+        senceScale = 0.2
+      }
+
       // 调整模型位置
       if (christmasTreeRef.value?.boxRef) {
         const boxRef = christmasTreeRef.value.boxRef
         if (boxRef) {
-          boxRef.position.x = (center_x - videoWidth / 2) / 20
-          boxRef.position.z = (center_y - videoHeight / 2) / 20
+          boxRef.position.x = (center_x - videoWidth / 2) / positionScale
+          boxRef.position.z = (center_y - videoHeight / 2) / positionScale
         }
       }
 
@@ -62,7 +72,11 @@ function syncObjectLocation() {
           getDistance(landmark0, landmark17)) /
         3
       if (christmasTreeRef.value?.setScale) {
-        christmasTreeRef.value.setScale(avgDistance / 0.2, avgDistance / 0.2, avgDistance / 0.2)
+        christmasTreeRef.value.setScale(
+          avgDistance / senceScale,
+          avgDistance / senceScale,
+          avgDistance / senceScale,
+        )
       }
     }
   }
@@ -84,7 +98,7 @@ onMounted(async () => {
   try {
     // 请求摄像头权限
     // 提示用户允许摄像头权限
-    window.alert('Treer 即将向您请求摄像头权限\n摄像头数据完全在本地处理, 不会有任何信息被上传')
+    // window.alert('Treer 即将向您请求摄像头权限\n摄像头数据完全在本地处理, 不会有任何信息被上传')
     // 检查横竖屏
     checkOrientation()
     window.addEventListener('orientationchange', checkOrientation)
@@ -154,15 +168,25 @@ async function detect() {
     : '检测失败，未检测到手'
   window.requestAnimationFrame(detect)
 }
-const isPortrait = ref(false)
 
 function checkOrientation() {
-  if (window.matchMedia('(orientation: portrait)').matches) {
-    isPortrait.value = true
-    alert('为了获得更好的体验，请使用横屏模式浏览。(微信不支持横屏模式, 建议使用系统浏览器打开)')
-  } else {
-    isPortrait.value = false
+  orientation.value = getDeviceOrientation()
+}
+
+function getDeviceOrientation(): 'portrait' | 'landscape' | 'unknown' {
+  // 若支持 Screen Orientation API
+  if (screen.orientation && screen.orientation.type) {
+    return screen.orientation.type.startsWith('portrait') ? 'portrait' : 'landscape'
   }
+  // 若不支持，则使用 matchMedia
+  if (window.matchMedia('(orientation: portrait)').matches) {
+    return 'portrait'
+  }
+  if (window.matchMedia('(orientation: landscape)').matches) {
+    return 'landscape'
+  }
+  // 其他情况返回 unknown
+  return 'unknown'
 }
 
 // 启动摄像头流
@@ -194,7 +218,7 @@ watch(selectedCameraId, async (newId) => {
 })
 </script>
 <template>
-  <TresCanvas v-bind="gl" window-size style="pointer-events: none">
+  <TresCanvas v-bind="gl" style="pointer-events: none; position: absolute" class="tres_cav">
     <!-- 摄像头 -->
     <TresPerspectiveCamera :position="[0, 25, 0]" :look-at="[0, 0, 0]" />
     <!-- 控制器 -->
@@ -205,7 +229,7 @@ watch(selectedCameraId, async (newId) => {
     </Suspense>
     <TresDirectionalLight cast-shadow :position="[0, 2, 0]" :intensity="10" />
   </TresCanvas>
-  <div class="cavBar">
+  <div class="video_cav">
     <video class="cam" ref="videoElement"></video>
     <!-- <canvas class="cam" ref="canvasElement" id="output"></canvas> -->
   </div>
@@ -236,7 +260,14 @@ watch(selectedCameraId, async (newId) => {
 </template>
 
 <style scoped>
-.cavBar {
+.tres_cav {
+  top: 0;
+  left: 0;
+  z-index: 1000; /* 确保在其他元素之上 */
+  width: 100vw;
+  height: 100vh;
+}
+.video_cav {
   width: 100vw;
   height: 100vh;
 }
@@ -249,6 +280,8 @@ watch(selectedCameraId, async (newId) => {
   width: 100vw;
   display: flex;
   background-color: #f2f2f2;
+  justify-content: space-around;
+  flex-wrap: wrap;
 }
 
 .toolbarItem {
@@ -269,7 +302,7 @@ select {
 }
 button {
   margin: 10px;
-  width: 100px;
+  width: auto;
   height: 40px;
   font-size: large;
   padding: 5px 10px;
