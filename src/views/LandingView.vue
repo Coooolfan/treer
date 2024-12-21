@@ -195,7 +195,7 @@ async function startCameraStream(deviceId: string) {
       stream.getTracks().forEach((track) => track.stop())
     }
 
-    // 请求��的摄像头流
+    // 请求摄像头流
     const stream = await window.navigator.mediaDevices.getUserMedia({
       video: { deviceId: { exact: deviceId } },
     })
