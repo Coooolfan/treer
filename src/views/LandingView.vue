@@ -8,6 +8,9 @@ import { FilesetResolver, GestureRecognizer } from '@mediapipe/tasks-vision'
 import type { HandLandmarkerResult } from '@mediapipe/tasks-vision'
 import { getDistance } from '@/Utils'
 
+const positionScale = 100 // 用于调整位置的缩放因子
+const senceScale = 1000   // 用于调整场景整体大小的缩放因子
+
 const videoElement = ref<HTMLVideoElement | null>(null)
 const christmasTreeRef = ref<InstanceType<typeof ChristmasTree> | null>(null)
 const cameras = ref<MediaDeviceInfo[]>([])
@@ -18,6 +21,7 @@ const gestureRecognizerLoaded = ref(false)
 let handLandmarkerResult: HandLandmarkerResult | null = null
 const msg = ref('')
 // const debugMsg = ref('')
+const isDetecting = ref(false)
 
 async function getCameraDevices(): Promise<MediaDeviceInfo[]> {
   const devices = await window.navigator.mediaDevices.enumerateDevices()
@@ -28,9 +32,8 @@ function syncObjectLocation() {
   if (videoElement.value) {
     const videoWidth = videoElement.value.videoWidth
     const videoHeight = videoElement.value.videoHeight
-
-    let center_x = 0
-    let center_y = 0
+    let center_x = 0, center_y = 0
+    
     // 绘制手部检测结果
     if (handLandmarkerResult) {
       if (handLandmarkerResult.handedness.length === 0) {
@@ -46,42 +49,51 @@ function syncObjectLocation() {
       center_x = ((landmark0.x + landmark5.x + landmark17.x) / 3) * videoWidth
       center_y = ((landmark0.y + landmark5.y + landmark17.y) / 3) * videoHeight
 
-      // debugMsg.value = `${getDistance(landmark0, landmark5)} \n ${getDistance(landmark17, landmark5)}\n${getDistance(landmark0, landmark17)}mm`
-
-      // 调整模型位置和缩放比例，默认为竖屏
-      let positionScale = 60
-      let senceScale = 0.5
-      if (orientation.value === 'landscape') {
-        positionScale = 20
-        senceScale = 0.2
-      }
+      // 获取手部关键点
+      const center_z = (landmark0.z + landmark5.z + landmark17.z) / 3
 
       // 调整模型位置
       if (christmasTreeRef.value?.boxRef) {
         const boxRef = christmasTreeRef.value.boxRef
         if (boxRef) {
-          boxRef.position.x = (center_x - videoWidth / 2) / positionScale
-          boxRef.position.z = (center_y - videoHeight / 2) / positionScale
+          // 使用更合适的缩放因子
+          const positionScaleFactor = orientation.value === 'landscape' ? 20 : 60
+          boxRef.position.x = (center_x - videoWidth / 2) / positionScaleFactor
+          boxRef.position.y = center_z * 20  // 保持 y 轴控制不变
+          boxRef.position.z = (center_y - videoHeight / 2) / positionScaleFactor
         }
       }
 
       // 调整模型缩放
-      const avgDistance =
-        (getDistance(landmark0, landmark5) +
-          getDistance(landmark17, landmark5) +
-          getDistance(landmark0, landmark17)) /
-        3
+      const avgDistance = (getDistance(landmark0, landmark5) + 
+        getDistance(landmark17, landmark5) + 
+        getDistance(landmark0, landmark17)) / 3
+      const scaleFactor = orientation.value === 'landscape' ? 0.2 : 0.5
       if (christmasTreeRef.value?.setScale) {
         christmasTreeRef.value.setScale(
-          avgDistance / senceScale,
-          avgDistance / senceScale,
-          avgDistance / senceScale,
+          avgDistance / scaleFactor,
+          avgDistance / scaleFactor,
+          avgDistance / scaleFactor,
         )
       }
     }
   }
   window.requestAnimationFrame(syncObjectLocation)
 }
+
+function checkOrientation() {
+  orientation.value = getDeviceOrientation()
+}
+
+function getDeviceOrientation(): 'portrait' | 'landscape' | 'unknown' {
+  if (screen.orientation && screen.orientation.type) {
+    return screen.orientation.type.startsWith('portrait') ? 'portrait' : 'landscape'
+  }
+  if (window.matchMedia('(orientation: portrait)').matches) return 'portrait'
+  if (window.matchMedia('(orientation: landscape)').matches) return 'landscape'
+  return 'unknown'
+}
+
 async function createGestureRecognizer() {
   gestureRecognizerLoaded.value = false
   const vision = await FilesetResolver.forVisionTasks(import.meta.env.BASE_URL + '/wasm')
@@ -93,16 +105,15 @@ async function createGestureRecognizer() {
   })
   gestureRecognizerLoaded.value = true
 }
+
 onMounted(async () => {
   createGestureRecognizer()
   try {
     // 请求摄像头权限
-    // 提示用户允许摄像头权限
     window.alert('Treer 即将向您请求摄像头权限\n摄像头数据完全在本地处理, 不会有任何信息被上传')
-    // 检查横竖屏
     checkOrientation()
     window.addEventListener('orientationchange', checkOrientation)
-    // 尝试初始化摄像头
+    
     const stream = await window.navigator.mediaDevices.getUserMedia({ video: true })
     if (videoElement.value) {
       videoElement.value.srcObject = stream
@@ -111,10 +122,8 @@ onMounted(async () => {
       selectedCameraId.value = cameras.value[0].deviceId
     }
   } catch (error) {
-    if (
-      error instanceof DOMException &&
-      error.message.includes('play() can only be initiated by a user gesture')
-    ) {
+    if (error instanceof DOMException && 
+        error.message.includes('play() can only be initiated by a user gesture')) {
       const stream = await window.navigator.mediaDevices.getUserMedia({ video: true })
       if (videoElement.value) {
         videoElement.value.srcObject = stream
@@ -128,15 +137,9 @@ onMounted(async () => {
   window.requestAnimationFrame(syncObjectLocation)
 })
 
-const gl = {
-  shadows: true,
-  alpha: true,
-  shadowMapType: BasicShadowMap,
-  outputColorSpace: SRGBColorSpace,
-  toneMapping: NoToneMapping,
-}
-
+// 修改 detect 函数
 async function detect() {
+  if (!isDetecting.value) return  // 如果未在检测状态，直接返回
   if (videoElement.value && videoElement.value.paused) {
     try {
       await videoElement.value.play()
@@ -144,10 +147,8 @@ async function detect() {
       console.error('播放视频时发生错误：', error)
     }
   }
-  // 开始时间
   const start = performance.now()
   if (gestureRecognizerLoaded.value && videoElement.value) {
-    // 等待视频元数据加载完成
     if (videoElement.value.readyState < 2) {
       await new Promise<void>((resolve) => {
         videoElement.value!.onloadeddata = () => resolve()
@@ -159,34 +160,30 @@ async function detect() {
       console.error('检测失败：', error)
     }
   }
-
-  // 结束时间
   const end = performance.now()
-  // console.log(handLandmarkerResult, end - start + 'ms')
   msg.value = handLandmarkerResult
     ? `检测耗时：${(end - start).toFixed(0)}ms, 一共有${handLandmarkerResult.handedness.length}只手`
     : '检测失败，未检测到手'
-  window.requestAnimationFrame(detect)
+  // 只在检测状态时继续循环
+  if (isDetecting.value) {
+    window.requestAnimationFrame(detect)
+  }
 }
 
-function checkOrientation() {
-  orientation.value = getDeviceOrientation()
+// 添加切换检测状态的函数
+function toggleDetection() {
+  isDetecting.value = !isDetecting.value
+  if (isDetecting.value) {
+    detect() // 开始检测循环
+  }
 }
 
-function getDeviceOrientation(): 'portrait' | 'landscape' | 'unknown' {
-  // 若支持 Screen Orientation API
-  if (screen.orientation && screen.orientation.type) {
-    return screen.orientation.type.startsWith('portrait') ? 'portrait' : 'landscape'
-  }
-  // 若不支持，则使用 matchMedia
-  if (window.matchMedia('(orientation: portrait)').matches) {
-    return 'portrait'
-  }
-  if (window.matchMedia('(orientation: landscape)').matches) {
-    return 'landscape'
-  }
-  // 其他情况返回 unknown
-  return 'unknown'
+const gl = {
+  shadows: true,
+  alpha: true,
+  shadowMapType: BasicShadowMap,
+  outputColorSpace: SRGBColorSpace,
+  toneMapping: NoToneMapping,
 }
 
 // 启动摄像头流
@@ -198,7 +195,7 @@ async function startCameraStream(deviceId: string) {
       stream.getTracks().forEach((track) => track.stop())
     }
 
-    // 请求新的摄像头流
+    // 请求��的摄像头流
     const stream = await window.navigator.mediaDevices.getUserMedia({
       video: { deviceId: { exact: deviceId } },
     })
@@ -211,6 +208,7 @@ async function startCameraStream(deviceId: string) {
     console.error('无法访问摄像头：', error)
   }
 }
+
 watch(selectedCameraId, async (newId) => {
   if (newId) {
     await startCameraStream(newId)
@@ -219,7 +217,13 @@ watch(selectedCameraId, async (newId) => {
 </script>
 <template>
   <div class="toolbar">
-    <button class="toolbarItem" @click="detect">开始</button>
+    <button 
+      class="toolbarItem" 
+      @click="toggleDetection"
+      :style="{ backgroundColor: isDetecting ? '#ff4444' : '#f78b3d' }"
+    >
+      {{ isDetecting ? '暂停' : '开始' }}
+    </button>
     <select v-model="selectedCameraId">
       <option v-for="camera in cameras" :key="camera.deviceId" :value="camera.deviceId">
         {{ camera.label }}
@@ -244,7 +248,7 @@ watch(selectedCameraId, async (newId) => {
     </p>
     <p class="msgItem2">{{ msg }}</p>
     <p class="copyright">
-      <a href="https://github.com/Coooolfan/treer">此页面为项目 Treer 的演示站。</a>
+      <a href="https://github.com/Coooolfan/treer">此页面为项目 Treer 的演示。</a>
       &nbsp;定制联系邮箱：coolfan1024@gmail.com
     </p>
   </div>
