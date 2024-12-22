@@ -10,7 +10,7 @@ mediapipe + Three.js + Vue
 
 # 截图
 
-![alt text](/image/screenshot.jpg)
+![screenshot](/image/screenshot.jpg)
 
 # 特色
 
@@ -64,3 +64,9 @@ mediapipe + Three.js + Vue
 确定一个三维物体的状态需要6个参数（假设摄像机固定）：位置（x, y, z）、旋转（x, y, z）。虽然 mediapipe 可以提供手掌的 21 个关键点，理论上可以由此解算出模型或者摄像机的位置。但是我不会……
 
 项目只实现了基于掌心位置的追踪，还有根据手掌周长大小来改变模型的大小。具体代码在`src\views\LandingView.vue`中的`syncObjectLocation`函数中。
+
+# 参考
+
+- 圣诞树模型
+
+    "christmas tree 2" (https://skfb.ly/oO8VF) by vicente betoret ferrero is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/).

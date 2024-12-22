@@ -17,6 +17,7 @@ let gestureRecognizer: GestureRecognizer | null = null
 const gestureRecognizerLoaded = ref(false)
 let handLandmarkerResult: HandLandmarkerResult | null = null
 const msg = ref('')
+const isDetecting = ref(false)
 // const debugMsg = ref('')
 
 async function getCameraDevices(): Promise<MediaDeviceInfo[]> {
@@ -84,7 +85,11 @@ function syncObjectLocation() {
 }
 async function createGestureRecognizer() {
   gestureRecognizerLoaded.value = false
-  const vision = await FilesetResolver.forVisionTasks(import.meta.env.BASE_URL + '/wasm')
+  let visionWASM = '/wasm'
+  if (import.meta.env.BASE_URL) {
+    visionWASM = import.meta.env.BASE_URL + 'wasm'
+  }
+  const vision = await FilesetResolver.forVisionTasks(visionWASM)
   gestureRecognizer = await GestureRecognizer.createFromOptions(vision, {
     baseOptions: {
       modelAssetPath: new URL('../assets/gesture_recognizer.task', import.meta.url).href,
@@ -136,7 +141,19 @@ const gl = {
   toneMapping: NoToneMapping,
 }
 
+async function detectHanlder() {
+  if (isDetecting.value) {
+    isDetecting.value = false
+    return
+  } else {
+    isDetecting.value = true
+    detect()
+  }
+}
+
 async function detect() {
+  if (!isDetecting.value) return
+
   if (videoElement.value && videoElement.value.paused) {
     try {
       await videoElement.value.play()
@@ -219,7 +236,9 @@ watch(selectedCameraId, async (newId) => {
 </script>
 <template>
   <div class="toolbar">
-    <button class="toolbarItem" @click="detect">开始</button>
+    <button class="toolbarItem" @click="detectHanlder">
+      {{ isDetecting ? '停止' : '开始' }}
+    </button>
     <select v-model="selectedCameraId">
       <option v-for="camera in cameras" :key="camera.deviceId" :value="camera.deviceId">
         {{ camera.label }}
@@ -246,6 +265,11 @@ watch(selectedCameraId, async (newId) => {
     <p class="copyright">
       <a href="https://github.com/Coooolfan/treer">此页面为项目 Treer 的演示站。</a>
       &nbsp;定制联系邮箱：coolfan1024@gmail.com
+    </p>
+    <p class="copyright_model">
+      此三维模型由 vicente betoret ferrero 制作，原模型地址为
+      <a href="https://skfb.ly/oO8VF">https://skfb.ly/oO8VF</a>，遵循
+      <a href="http://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a> 协议。
     </p>
   </div>
 </template>
@@ -291,7 +315,20 @@ watch(selectedCameraId, async (newId) => {
   top: 120px;
   left: 0;
   width: 100%;
-  height: 60px;
+  height: 2rem;
+  background-color: rgba(242, 242, 242, 0.244);
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.copyright_model {
+  margin: 0;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 2rem;
   background-color: rgba(242, 242, 242, 0.244);
   text-align: center;
   display: flex;
