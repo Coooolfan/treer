@@ -5,7 +5,7 @@ import vueDevTools from 'vite-plugin-vue-devtools'
 import { templateCompilerOptions } from '@tresjs/core'
 
 export default defineConfig({
-  base: '/treer/',
+  // base: '/treer/',
   plugins: [vue({ ...templateCompilerOptions }), vueDevTools()],
   resolve: {
     alias: {
