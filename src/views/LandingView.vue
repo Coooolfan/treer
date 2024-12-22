@@ -35,7 +35,6 @@ function syncObjectLocation() {
     // 绘制手部检测结果
     if (handLandmarkerResult) {
       if (handLandmarkerResult.handedness.length === 0) {
-        msg.value = '未检测到手'
         window.requestAnimationFrame(syncObjectLocation)
         return
       }
@@ -142,6 +141,10 @@ const gl = {
 }
 
 async function detectHanlder() {
+  if(!gestureRecognizerLoaded.value) {
+    window.alert('模型加载中，请稍后')
+    return
+  }
   if (isDetecting.value) {
     isDetecting.value = false
     return
@@ -180,9 +183,11 @@ async function detect() {
   // 结束时间
   const end = performance.now()
   // console.log(handLandmarkerResult, end - start + 'ms')
-  msg.value = handLandmarkerResult
-    ? `检测耗时：${(end - start).toFixed(0)}ms, 一共有${handLandmarkerResult.handedness.length}只手`
-    : '检测失败，未检测到手'
+  if(handLandmarkerResult && handLandmarkerResult.handedness.length > 0) {
+    msg.value = `检测耗时：${(end - start).toFixed(0)}ms, 一共有${handLandmarkerResult.handedness.length}只手`
+  }else{
+    msg.value = '请尝试将手掌放置在画面内自由移动'
+  }
   window.requestAnimationFrame(detect)
 }
 
@@ -239,11 +244,14 @@ watch(selectedCameraId, async (newId) => {
     <button class="toolbarItem" @click="detectHanlder">
       {{ isDetecting ? '停止' : '开始' }}
     </button>
-    <select v-model="selectedCameraId">
-      <option v-for="camera in cameras" :key="camera.deviceId" :value="camera.deviceId">
-        {{ camera.label }}
-      </option>
-    </select>
+    <div style="display: flex; align-items: center;">
+      <p>选择相机:</p>
+      <select v-model="selectedCameraId">
+        <option v-for="camera in cameras" :key="camera.deviceId" :value="camera.deviceId">
+          {{ camera.label }}
+        </option>
+      </select>
+    </div>
   </div>
   <TresCanvas v-bind="gl" style="pointer-events: none; position: absolute; top: 60px">
     <!-- 摄像头 -->

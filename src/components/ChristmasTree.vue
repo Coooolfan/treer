@@ -16,6 +16,7 @@ defineExpose({ boxRef, setScale })
 
 const { scene } = await useGLTF(new URL('../assets/christmas_tree.gltf', import.meta.url).href)
 scene.position.y = 0
+scene.scale.set(0, 0, 0)
 const { onLoop } = useRenderLoop()
 onLoop(({ delta }) => {
   if (boxRef.value) {
